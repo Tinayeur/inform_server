@@ -1,0 +1,51 @@
+<div align="center" width="100%">
+    <img src="./public/icon.svg" width="128" alt="" />
+</div>
+
+# Page d'informations serveur
+
+Is an easy-to-use self-hosted monitoring tool.
+
+<img src="https://img.as215772.net/infor_serveur.png" width="700" alt="" />
+
+
+## 🔧 How to Install
+
+Requirements:
+
+- Platform
+  - ✅ Major Linux distros such as Debian, Ubuntu, CentOS, Fedora and ArchLinux etc.
+  - ✅ Windows 10 (x64), Windows Server 2012 R2 (x64) or higher
+  - ❌ Replit / Heroku
+- [Node.js](https://nodejs.org/en/download/) 18 / 20.4
+- [npm](https://docs.npmjs.com/cli/) 9
+- [Git](https://git-scm.com/downloads)
+- [pm2](https://pm2.keymetrics.io/) - For running Inform-Server in the background
+
+```bash
+git clone https://github.com/Tinayeur/inform_server
+cd inform_server
+npm run setup
+
+# Option 1. Try it
+node server.js
+
+# (Recommended) Option 2. Run in the background using PM2
+# Install PM2 if you don't have it:
+npm install pm2 -g && pm2 install pm2-logrotate
+
+# Start Server
+pm2 start server/server.js --name inform-server
+```
+
+Inform-Server is now running on http://localhost:3000
+
+More useful PM2 Commands
+
+```bash
+# If you want to see the current console output
+pm2 monit
+
+# If you want to add it to startup
+pm2 save && pm2 startup
+```

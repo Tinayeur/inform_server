@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Système</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body {
+            background-color: #2d3436;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+            flex-grow: 1; /* Permet au contenu de se développer et occuper l'espace restant */
+        }
+        h1 {
+            color: #00cec9;
+        }
+        .chart-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        canvas {
+            width: 400px !important;
+            height: 250px !important;
+            margin: 0 10px;
+        }
+        #os-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #444;
+            border-radius: 8px;
+        }
+        #os-info h2 {
+            color: #00cec9;
+        }
+
+        /* Style pour le footer */
+        footer {
+            margin-top: auto; /* Pousse le footer en bas */
+            padding: 10px;
+            background-color: transparent;
+            color: #00cec9;
+            font-size: 14px;
+            text-align: center;
+            border-top: 2px solid #00cec9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Monitoring Système</h1>
+
+    <!-- Section pour afficher les informations sur l'OS -->
+    <div id="os-info">
+        <h2>Informations sur l'OS</h2>
+        <p id="os-name">Chargement...</p>
+        <p id="os-version">Chargement...</p>
+        <p id="os-arch">Chargement...</p>
+    </div>
+
+    <!-- Graphiques linéaires -->
+    <div class="chart-container">
+        <canvas id="cpuChart"></canvas>
+        <canvas id="memoryChart"></canvas>
+        <canvas id="diskChart"></canvas>
+    </div>
+
+    <script>
+        // Initialisation des graphiques linéaires
+        const ctxCpu = document.getElementById('cpuChart').getContext('2d');
+        const ctxMemory = document.getElementById('memoryChart').getContext('2d');
+        const ctxDisk = document.getElementById('diskChart').getContext('2d');
+    
+        const cpuChart = new Chart(ctxCpu, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'CPU Usage (%)',
+                    data: [],
+                    borderColor: '#00cec9',
+                    backgroundColor: 'rgba(0, 206, 201, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Temps' }
+                    },
+                    y: {
+                        title: { display: true, text: 'CPU (%)' },
+                        min: 0,
+                        max: 100
+                    }
+                }
+            }
+        });
+    
+        const memoryChart = new Chart(ctxMemory, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Memory Usage (Go)', // Affichage en Go
+                    data: [],
+                    borderColor: '#ff6347',
+                    backgroundColor: 'rgba(255, 99, 71, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Temps' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Mémoire (Go)' }, // Affichage en Go
+                        min: 0,
+                        max: 0  // Cette valeur sera mise à jour dynamiquement avec la capacité totale de la mémoire
+                    }
+                }
+            }
+        });
+    
+        const diskChart = new Chart(ctxDisk, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Disk Usage (Go)', // Affichage en Go
+                    data: [],
+                    borderColor: '#ffb300',
+                    backgroundColor: 'rgba(255, 179, 0, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Temps' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Disque (Go)' }, // Affichage en Go
+                        min: 0,
+                        max: 0  // Cette valeur sera mise à jour dynamiquement avec la capacité totale du disque
+                    }
+                }
+            }
+        });
+    
+        // Fonction pour récupérer les données depuis l'API
+        async function fetchMetrics() {
+            try {
+                const response = await fetch('/metrics');
+                const data = await response.json();
+    
+                console.log("Données de l'API:", data);
+                console.log("Données du disque:", data.disk);
+    
+                if (!data || !data.cpuLoad || !data.memoryUsagePercentage || !data.disk) {
+                    console.error("Données manquantes dans la réponse API");
+                    return;
+                }
+    
+                // Conversion des données en nombres
+                const cpuLoad = parseFloat(data.cpuLoad.replace('%', ''));
+                const memoryUsagePercentage = parseFloat(data.memoryUsagePercentage.replace('%', ''));
+                const memoryUsedGB = parseFloat(data.memoryUsedMB.replace('Go', '').trim()); // En Go
+                const totalMemoryGB = parseFloat(data.totalMemoryMB.replace('Go', '').trim()); // En Go
+    
+                let diskUsage = 0;  
+                let totalDiskGB = 0;
+    
+                if (data.disk && data.disk[0]) {
+                    totalDiskGB = parseFloat(data.disk[0].total.replace('GB', '').trim()); // Total du disque en Go
+                    if (data.disk[0].usedPercentage) {
+                        diskUsage = parseFloat(data.disk[0].usedPercentage.replace('%', ''));
+                    } else {
+                        const used = parseFloat(data.disk[0].used.replace('GB', '').trim());
+                        diskUsage = (used / totalDiskGB) * 100; // Calcul du pourcentage d'utilisation
+                    }
+                } else {
+                    console.error("Le champ usedPercentage ou les données du disque sont mal structurées.");
+                }
+    
+                // Mettre à jour les graphiques avec les données
+                updateCharts({
+                    cpuLoad,
+                    memoryUsage: memoryUsagePercentage,
+                    memoryUsedGB,
+                    totalMemoryGB,
+                    diskUsage,
+                    totalDiskGB
+                });
+            } catch (error) {
+                console.error('Erreur de récupération des données:', error);
+            }
+        }
+
+        async function fetchOSInfo() {
+    try {
+        const response = await fetch('/os-info');
+        const data = await response.json();
+
+        // Afficher les données dans la console pour débogage
+        console.log(data);
+
+        // Vérifier si les données existent avant de les afficher
+        if (data && data.osName && data.osVersion && data.arch) {
+            document.getElementById('os-name').textContent = 'Nom de l\'OS : ' + data.osName;
+            document.getElementById('os-version').textContent = 'Version : ' + data.osVersion;
+            document.getElementById('os-arch').textContent = 'Architecture : ' + data.arch;
+        } else {
+            // Si les données sont manquantes ou mal formatées, afficher un message d'erreur
+            document.getElementById('os-name').textContent = 'Nom de l\'OS : Données non disponibles';
+            document.getElementById('os-version').textContent = 'Version : Données non disponibles';
+            document.getElementById('os-arch').textContent = 'Architecture : Données non disponibles';
+        }
+    } catch (error) {
+        console.error('Erreur de récupération des informations de l\'OS:', error);
+        document.getElementById('os-name').textContent = 'Nom de l\'OS : Erreur';
+        document.getElementById('os-version').textContent = 'Version : Erreur';
+        document.getElementById('os-arch').textContent = 'Architecture : Erreur';
+    }
+}
+    
+        function updateCharts(data) {
+            // Ajouter les nouvelles données dans les graphiques linéaires
+            cpuChart.data.labels.push(new Date().toLocaleTimeString());
+            cpuChart.data.datasets[0].data.push(data.cpuLoad);
+    
+            memoryChart.data.labels.push(new Date().toLocaleTimeString());
+            memoryChart.data.datasets[0].data.push(data.memoryUsage);
+    
+            diskChart.data.labels.push(new Date().toLocaleTimeString());
+            diskChart.data.datasets[0].data.push(data.diskUsage);
+    
+            cpuChart.update();
+            memoryChart.update();
+            diskChart.update();
+    
+            // Mettre à jour les maxs de mémoire et disque
+            memoryChart.options.scales.y.max = data.totalMemoryGB;
+            diskChart.options.scales.y.max = data.totalDiskGB;
+        }
+    
+        // Récupérer les métriques et informations sur l'OS
+        setInterval(fetchMetrics, 3000);
+        fetchMetrics();
+        fetchOSInfo(); // Récupérer et afficher les informations sur l'OS
+        
+    </script>
+
+
+    <footer>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <p>Propulsé par <a href="https://securost.com" target="_blank" style="color: #00cec9; text-decoration: none;">Securost</a></p>
+            <p><a href="https://github.com/Tinayeur/inform_server" target="_blank" style="color: #00cec9; text-decoration: none;">GitHub v1.0.0</a></p>
+        </div>
+    </footer>
+</body>
+</html>

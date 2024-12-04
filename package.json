@@ -1,0 +1,18 @@
+{
+  "name": "monitoring",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tinayeur's",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "express": "^4.21.1",
+    "os": "^0.1.2",
+    "sqlite3": "^5.1.7",
+    "systeminformation": "^5.23.5"
+  }
+}
